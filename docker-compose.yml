@@ -1,0 +1,17 @@
+services:
+  pg:
+    image: pgvector/pgvector:pg16
+    restart: always
+    volumes:
+      - pgtwi:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+    environment:
+      - POSTGRES_DB=twi-db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+
+volumes:
+  pgtwi:
