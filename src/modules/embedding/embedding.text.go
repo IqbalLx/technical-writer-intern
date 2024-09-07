@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const OLLAMA_EMBEDDING_URL = "http://localhost:11434/api/embeddings"
+const OLLAMA_EMBEDDING_URL = "http://ollama.local/api/embeddings"
 
 func floatArrayToStringArray(arr []float64) string {
 	// Create a slice to hold the string representations of the integers

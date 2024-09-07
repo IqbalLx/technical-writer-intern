@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -81,7 +82,7 @@ func main() {
 				}
 
 				go func() {
-					answer, err := chat.DoAnswerUserChat(context.Background(), dbpool, ev.Text)
+					answer, err := chat.DoAnswerUserChat(context.Background(), dbpool, ev.User, ev.Text)
 					if err != nil {
 						slackApi.PostMessage(ev.Channel, slack.MsgOptionText("Bentar, error bang, coba lagi ya ntaran", false))
 						return
@@ -112,15 +113,22 @@ func main() {
 			return
 		}
 
-		err = document.DoInsertNewDocument(r.Context(), dbpool, s.Text, s.UserName)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
+		go func() {
+			err = document.DoInsertNewDocument(context.Background(), dbpool, s.Text, s.UserName)
+			if err != nil {
+				errorResp := fmt.Sprintf("Waduh error bang <@%s>, coba lagi ya ntaran", s.UserID)
+				slackApi.PostMessage(s.ChannelID, slack.MsgOptionText(errorResp, false))
+				return
+			}
+
+			successResp := fmt.Sprintf("Okidoki bang <@%s>!, udah ku catet", s.UserID)
+			slackApi.PostMessage(s.ChannelID, slack.MsgOptionText(successResp, false))
+		}()
 
 		// Create the response data
 		response := map[string]string{
 			"response_type": "in_channel",
-			"text":          "Siap bang!",
+			"text":          "Siap bang! Tak proses sik yo, abis ini kukabarin",
 		}
 
 		// Set the content type to application/json
@@ -137,5 +145,5 @@ func main() {
 		w.Write(jsonData)
 	})
 
-	http.ListenAndServe(":8888", nil)
+	log.Fatal(http.ListenAndServe(":8888", nil))
 }
