@@ -19,7 +19,7 @@ import (
 func main() {
 	env := utils.NewEnv()
 
-	// initialize database
+	// database
 	connString := env.Read("POSTGRES_CONNSTRING")
 	ctx := context.Background()
 	dbpool, err := pgxpool.New(ctx, connString) // pgx.Connect(ctx, connOrDSNString)
@@ -28,9 +28,25 @@ func main() {
 	}
 	defer dbpool.Close()
 
+	// env
+	deployEnv := env.Read("ENV")
+
+	// slack
 	slackApi := slack.New(env.Read("SLACK_BOT_TOKEN"))
 	slackSigningSecret := env.Read("SLACK_SIGNING_SECRET")
 	slackBotID := "B07HBRXUQ83"
+
+	// groq
+	groqApiKey := env.ReadWithDefaultVal("GROQ_API_KEY", "")
+	if deployEnv == "PROD" && groqApiKey == "" {
+		panic("GROQ_API_KEY is required in PROD")
+	}
+
+	// nomic
+	nomicApiKey := env.ReadWithDefaultVal("NOMIC_API_KEY", "")
+	if deployEnv == "PROD" && nomicApiKey == "" {
+		panic("NOMIC_API_KEY is required in PROD")
+	}
 
 	http.HandleFunc("POST /slack/event", func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
@@ -82,9 +98,13 @@ func main() {
 				}
 
 				go func() {
-					answer, err := chat.DoAnswerUserChat(context.Background(), dbpool, ev.User, ev.Text)
+					answer, err := chat.DoAnswerUserChat(
+						context.Background(), dbpool,
+						deployEnv, nomicApiKey, groqApiKey,
+						ev.User, ev.Text,
+					)
 					if err != nil {
-						slackApi.PostMessage(ev.Channel, slack.MsgOptionText("Bentar, error bang, coba lagi ya ntaran", false))
+						slackApi.PostMessage(ev.Channel, slack.MsgOptionText("Bentar, error cuy, coba lagi ya ntaran", false))
 						return
 					}
 
@@ -114,21 +134,25 @@ func main() {
 		}
 
 		go func() {
-			err = document.DoInsertNewDocument(context.Background(), dbpool, s.Text, s.UserName)
+			err = document.DoInsertNewDocument(
+				context.Background(), dbpool,
+				deployEnv, nomicApiKey, groqApiKey,
+				s.Text, s.UserName,
+			)
 			if err != nil {
-				errorResp := fmt.Sprintf("Waduh error bang <@%s>, coba lagi ya ntaran", s.UserID)
+				errorResp := fmt.Sprintf("Waduh error nich <@%s>, coba lagi ya ntaran", s.UserID)
 				slackApi.PostMessage(s.ChannelID, slack.MsgOptionText(errorResp, false))
 				return
 			}
 
-			successResp := fmt.Sprintf("Okidoki bang <@%s>!, udah ku catet", s.UserID)
+			successResp := fmt.Sprintf("Okidoki <@%s>!, udah ku catet", s.UserID)
 			slackApi.PostMessage(s.ChannelID, slack.MsgOptionText(successResp, false))
 		}()
 
 		// Create the response data
 		response := map[string]string{
 			"response_type": "in_channel",
-			"text":          "Siap bang! Tak proses sik yo, abis ini kukabarin",
+			"text":          "Aye! Tak proses sik yo, abis ini kukabarin",
 		}
 
 		// Set the content type to application/json

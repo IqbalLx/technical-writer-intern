@@ -11,13 +11,14 @@ import (
 
 func DoInsertNewDocument(
 	ctx context.Context, db *pgxpool.Pool,
+	env string, embedderApiKey string, llmApiKey string,
 	text string, createdBy string,
 ) error {
-	paraphrasedWord, err := llm.GetLLMParaphrasedWord(text)
+	paraphrasedWord, err := llm.GetLLMParaphrasedWord(env, llmApiKey, text)
 	if err != nil {
 		return err
 	}
-	paraphrasedWordEmbedding, err := embedding.GetTextEmbedding(paraphrasedWord)
+	paraphrasedWordEmbedding, err := embedding.GetTextEmbedding(env, embedderApiKey, paraphrasedWord)
 	if err != nil {
 		return err
 	}
@@ -33,9 +34,9 @@ func DoInsertNewDocument(
 }
 
 func DoGetSimilarDocuments(
-	ctx context.Context, db *pgxpool.Pool, text string,
+	ctx context.Context, db *pgxpool.Pool, env string, embedderApiKey string, text string,
 ) ([]entities.Document, error) {
-	textEmbedding, err := embedding.GetTextEmbedding(text)
+	textEmbedding, err := embedding.GetTextEmbedding(env, embedderApiKey, text)
 	if err != nil {
 		return []entities.Document{}, err
 	}

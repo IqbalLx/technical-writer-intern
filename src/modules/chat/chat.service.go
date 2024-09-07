@@ -10,7 +10,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func DoAnswerUserChat(ctx context.Context, db *pgxpool.Pool, userName string, userChat string) (string, error) {
+func DoAnswerUserChat(ctx context.Context, db *pgxpool.Pool,
+	env string, embedderApiKey string, llmApiKey string,
+	userName string, userChat string,
+) (string, error) {
 	LIMIT_HISTORIES := 40
 
 	currentHistoriesCount, err := countUserChatHistories(ctx, db, userName)
@@ -24,7 +27,7 @@ func DoAnswerUserChat(ctx context.Context, db *pgxpool.Pool, userName string, us
 		return "", err
 	}
 
-	contexts, err := document.DoGetSimilarDocuments(ctx, db, userChat)
+	contexts, err := document.DoGetSimilarDocuments(ctx, db, env, embedderApiKey, userChat)
 	if err != nil {
 		return "", err
 	}
@@ -33,7 +36,7 @@ func DoAnswerUserChat(ctx context.Context, db *pgxpool.Pool, userName string, us
 	newChats := []entities.ChatHistory{{Role: "system", Content: contextStr}, {Role: "user", Content: userChat}}
 	chatHistories = append(chatHistories, newChats...)
 
-	botResponse, err := llm.GetLLMChatResponse(chatHistories)
+	botResponse, err := llm.GetLLMChatResponse(env, llmApiKey, chatHistories)
 	if err != nil {
 		return "", err
 	}
