@@ -15,6 +15,8 @@ FROM scratch
 
 LABEL maintainer="Iqbal Maulana <iqbal19600@gmail.com>"
 
+COPY --from=build etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+
 COPY --from=build /build/app .
 
 ENTRYPOINT ["/app"]
